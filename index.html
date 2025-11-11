@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Decision Picker</title>
+    
+    <!-- Load Tailwind CSS CDN FIRST --><script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Configure custom colors and font AFTER loading the Tailwind CDN script -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#4f46e5',
+                        'secondary': '#8b5cf6',
+                        'background': '#f0f4f8', /* Slightly muted background for shapes */
+                        'card': '#ffffff',
+                        'accent-green': '#10b981',
+                        'accent-blue': '#3b82f6',
+                        'accent-purple': '#a855f7',
+                        'shape-pink': '#fda4af', /* Tailwind pink-300 */
+                        'shape-yellow': '#fde047', /* Tailwind yellow-300 */
+                        'shape-green': '#a7f3d0', /* Tailwind emerald-200 */
+                        'shape-blue': '#bfdbfe', /* Tailwind blue-200 */
+                        'shape-orange': '#fdba74', /* Tailwind orange-300 */
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            background-color: #f0f4f8; /* A light, neutral background color */
+        }
+
+        /* --- Animations for shapes --- */
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg) scale(1); opacity: 0.8; }
+            50% { transform: translateY(-20px) rotate(10deg) scale(1.05); opacity: 1; }
+            100% { transform: translateY(0px) rotate(0deg) scale(1); opacity: 0.8; }
+        }
+
+        @keyframes floatOpposite {
+            0% { transform: translateY(0px) rotate(0deg) scale(1); opacity: 0.8; }
+            50% { transform: translateY(20px) rotate(-10deg) scale(1.05); opacity: 1; }
+            100% { transform: translateY(0px) rotate(0deg) scale(1); opacity: 0.8; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Define a simple animation for the result display */
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-result {
+            animation: fadeInScale 0.4s ease-out;
+        }
+
+        /* Define the shuffling animation */
+        @keyframes shuffle {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            50% { transform: translateY(-10px) scale(1.05); opacity: 0.8; }
+            100% { transform: translateY(0) scale(1); opacity: 0.8; }
+        }
+        .animate-shuffle {
+            animation: shuffle 0.1s infinite alternate;
+        }
+
+        /* Additional animation for the "reason" text */
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-reason {
+            animation: slideInUp 0.5s ease-out 0.2s forwards; /* Added delay */
+        }
+        
+        /* Loading spinner animation */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin 3s linear infinite;
+        }
+
+        /* Main container entrance animation */
+        @keyframes containerEntrance {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .app-container-entrance {
+            animation: containerEntrance 0.6s ease-out forwards;
+        }
+
+        /* Style for drag over state */
+        .drag-over {
+            border-color: #8b5cf6 !important; /* Secondary color for hover */
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+    </style>
+</head>
+<body class="font-sans flex justify-center p-4 relative">
+
+    <!-- Background Shapes Container --><div class="absolute inset-0 overflow-hidden -z-10">
+        <!-- Shape 1 (Circle) --><div class="absolute w-40 h-40 bg-shape-pink rounded-full blur-xl opacity-70" 
+             style="top: 10%; left: 5%; animation: float 15s ease-in-out infinite alternate, fadeIn 2s ease-out;"></div>
+        <!-- Shape 2 (Blob) --><div class="absolute w-60 h-60 bg-shape-yellow rounded-lg blur-2xl opacity-60" 
+             style="bottom: 15%; right: 10%; transform: rotate(20deg); border-radius: 40% 60% 70% 30% / 60% 30% 70% 40%; animation: floatOpposite 18s ease-in-out infinite alternate, fadeIn 2.5s ease-out 0.5s;"></div>
+        <!-- Shape 3 (Squiggle/Oval) --><div class="absolute w-32 h-56 bg-shape-green rounded-full blur-xl opacity-80" 
+             style="top: 5%; right: 25%; transform: rotate(-30deg); animation: float 12s ease-in-out infinite alternate, fadeIn 2s ease-out 1s;"></div>
+        <!-- Shape 4 (Smaller Circle) --><div class="absolute w-24 h-24 bg-shape-blue rounded-full blur-lg opacity-75" 
+             style="bottom: 5%; left: 20%; animation: floatOpposite 16s ease-in-out infinite alternate, fadeIn 2s ease-out 1.5s;"></div>
+        <!-- Shape 5 (Another Blob) --><div class="absolute w-52 h-44 bg-shape-orange rounded-xl blur-2xl opacity-65" 
+             style="top: 30%; left: -5%; transform: rotate(45deg); border-radius: 70% 30% 40% 60% / 30% 60% 40% 70%; animation: float 20s ease-in-out infinite alternate, fadeIn 2s ease-out 0.7s;"></div>
+        <!-- Shape 6 (Another Squiggle/Oval) --><div class="absolute w-20 h-40 bg-purple-300 rounded-full blur-lg opacity-70" 
+             style="bottom: 25%; right: -5%; transform: rotate(15deg); animation: floatOpposite 14s ease-in-out infinite alternate, fadeIn 2s ease-out 1.2s;"></div>
+    </div>
+
+
+    <!-- Main Application Container --><div id="app-container" class="w-full max-w-lg bg-card shadow-2xl rounded-xl p-6 md:p-10 border border-gray-100 transition-all duration-300 app-container-entrance relative z-10 mt-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-2">The Ultimate Decider</h1>
+            <p class="text-gray-500">Enter your options below (one per line) and let fate choose!</p>
+        </header>
+
+        <!-- Input Area --><div class="mb-6">
+            
+            <!-- Template Selector -->
+            <label for="templateSelect" class="block text-sm font-medium text-gray-700 mb-2">Use a Quick Template:</label>
+            <select id="templateSelect"
+                class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-accent-blue focus:border-accent-blue transition duration-150 text-gray-800 bg-white">
+                <option value="">-- Select a common dilemma --</option>
+                <option value="lunch">What's for Lunch? </option>
+                <option value="movie">Next Movie/Show to Watch </option>
+                <option value="activity">Weekend Activity </option>
+                <option value="game">Board Game Tonight </option>
+                <option value="drink">Morning Drink </option>
+            </select>
+
+            <!-- Dilemma Input Field -->
+            <label for="dilemmaInput" class="block text-sm font-medium text-gray-700 mb-2">What's the dilemma? (Optional, helps the AI choose):</label>
+            <input type="text" id="dilemmaInput" placeholder="e.g., Dinner tonight, or Weekend Activity, or Next Career Move"
+                class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary transition duration-150 text-gray-800">
+            
+            <!-- Image Upload/Paste Area (NEW) -->
+            <label for="imageUploadArea" class="block text-sm font-medium text-gray-700 mb-2 mt-4">Image (Optional for Intelligent Pick, e.g., two shoes or shirts):</label>
+            <div id="imageDropzone" class="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-secondary transition duration-150 bg-gray-50">
+                <p id="imageInputPlaceholder" class="text-sm text-gray-500">Drag & drop or paste an image here.</p>
+                <input type="file" id="imageInput" accept="image/*" class="hidden">
+            </div>
+            <div id="imagePreviewContainer" class="mt-4 p-2 border border-gray-200 rounded-lg bg-white hidden">
+                <img id="imagePreview" class="w-full h-auto max-h-48 object-contain rounded" src="" alt="Image Preview">
+                <div class="flex justify-between items-center pt-2">
+                    <span id="imageMimeType" class="text-xs text-gray-500 italic"></span>
+                    <button id="clearImageButton" class="text-xs text-red-500 hover:text-red-700 font-medium">Clear Image</button>
+                </div>
+            </div>
+
+            <label for="optionsInput" class="block text-sm font-medium text-gray-700 mb-2 mt-4">Enter Options (2 or more, one per line):</label>
+            <textarea id="optionsInput" rows="6" placeholder="tea
+coffee
+milkshake
+smoothie"
+                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition duration-150 resize-none text-gray-800"></textarea>
+        </div>
+
+        <!-- Action Buttons Block --><div class="flex flex-col space-y-3">
+            <!-- Quick Pick Button (Existing Random Logic) --><button id="quickPickButton" 
+                class="w-full py-3 px-4 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-secondary focus:outline-none focus:ring-4 focus:ring-primary focus:ring-opacity-50 transition duration-200 transform hover:scale-[1.01] active:scale-[0.99] disabled:bg-gray-400 disabled:cursor-not-allowed">
+                Quick Pick (Random)
+            </button>
+
+            <!-- Intelligent Pick Button (New Gemini Logic) --><button id="intelligentPickButton" 
+                class="w-full py-3 px-4 bg-accent-green text-white font-semibold rounded-lg shadow-md hover:bg-accent-green/80 focus:outline-none focus:ring-4 focus:ring-accent-green focus:ring-opacity-50 transition duration-200 transform hover:scale-[1.01] active:scale-[0.99] disabled:bg-gray-400 disabled:cursor-not-allowed">
+                Intelligent Pick 
+            </button>
+        </div>
+        
+        <!-- Reset Button Area --><div id="resetArea" class="mt-4 hidden">
+            <button id="resetButton" 
+                class="w-full py-2 px-4 text-sm bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 transition duration-200">
+                Start Over
+            </button>
+        </div>
+
+        <!-- Result Display Area --><div id="resultContainer" class="mt-8 pt-6 border-t border-gray-200 text-center hidden">
+            <p id="resultMessage" class="text-xl font-medium text-gray-600 mb-4">
+                The Picker has decided...
+            </p>
+            <div id="resultOutput" 
+                class="min-h-[60px] flex items-center justify-center p-4 bg-accent-green/10 text-accent-green text-3xl md:text-4xl font-extrabold rounded-xl shadow-inner animate-result">
+                <!-- Result will be inserted here --></div>
+            
+            <!-- Reason and Justification Output -->
+            <p id="reasonOutput" class="mt-4 text-gray-700 italic text-sm md:text-base opacity-0"></p>
+            
+            <!-- Loading Indicator for LLM call -->
+            <div id="reasonLoader" class="mt-4 flex items-center justify-center text-accent-green hidden">
+                <svg class="w-5 h-5 mr-3 animate-spin-slow text-accent-green" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-sm font-medium">Generating intelligent justification...</span>
+            </div>
+
+            <!-- Citation Area --><div id="citationsOutput" class="mt-4 pt-4 border-t border-gray-100 text-left text-xs text-gray-500 hidden">
+                <p class="font-semibold mb-1">Sources:</p>
+                <ul id="citationList" class="list-disc list-inside space-y-0.5 ml-4"></ul>
+            </div>
+            
+            <!-- Error/Status Message Box --><div id="statusMessage" class="mt-4 p-3 bg-red-100 text-red-700 border border-red-200 rounded-lg text-sm hidden" role="alert">
+                <!-- Status/Error messages appear here --></div>
+        </div>
+    </div>
+    
+    <!-- Decision History Container (NEW SECTION) -->
+    <div id="historyContainer" class="w-full max-w-lg mt-8 mb-8">
+        <h2 class="text-xl font-bold text-gray-800 mb-4 text-center">Your Recent Decisions</h2>
+        <div id="historyList" class="space-y-3">
+            <!-- History items will be inserted here -->
+            <div id="historyLoader" class="text-center text-gray-500 hidden">Loading history...</div>
+        </div>
+        <p id="noHistory" class="text-center text-gray-500 italic mt-4 hidden">No decisions saved yet. Get picking!</p>
+    </div>
+
+    <!-- Firebase SDK Imports (Mandatory Setup) --><script type="module">
+        // Fixed: Ensure module specifiers are clean strings
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel, collection, addDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- MANDATORY FIREBASE SETUP (Even if Firestore isn't used) ---
+        // Global variables for Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db = null;
+        let auth = null;
+        let app = null;
+        let userId = null;
+        let isFirebaseReady = false; // Flag to ensure DB operations wait for auth
+
+        // NEW: Global state for image data
+        let uploadedImageBase64 = null;
+        let uploadedImageMimeType = null;
+
+
+        // Function to initialize and authenticate Firebase
+        async function initializeFirebase() {
+            if (!firebaseConfig) {
+                console.error("Firebase config is missing.");
+                return;
+            }
+            try {
+                // Initialize Firebase
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('Debug'); // Enable Firestore logging
+
+                // Authenticate
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                isFirebaseReady = true; // Set flag after successful auth
+                console.log("Firebase initialized and user signed in:", userId);
+                
+                // Start listening to history immediately after auth
+                setupHistoryListener();
+
+            } catch (error) {
+                console.error("Firebase initialization or sign-in failed:", error);
+                showStatus("Error: Could not connect to the database for history.", true);
+            }
+        }
+
+        initializeFirebase();
+        // --- END FIREBASE SETUP ---
+
+        // --- APPLICATION LOGIC ---
+        const templateSelect = document.getElementById('templateSelect');
+        const dilemmaInput = document.getElementById('dilemmaInput'); 
+        const optionsInput = document.getElementById('optionsInput');
+        const quickPickButton = document.getElementById('quickPickButton');
+        const intelligentPickButton = document.getElementById('intelligentPickButton');
+        const resetButton = document.getElementById('resetButton');
+        const resetArea = document.getElementById('resetArea');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultOutput = document.getElementById('resultOutput');
+        const reasonOutput = document.getElementById('reasonOutput');
+        const reasonLoader = document.getElementById('reasonLoader');
+        const resultMessage = document.getElementById('resultMessage');
+        const statusMessage = document.getElementById('statusMessage');
+        const citationsOutput = document.getElementById('citationsOutput');
+        const citationList = document.getElementById('citationList');
+        // History Elements
+        const historyList = document.getElementById('historyList');
+        const historyLoader = document.getElementById('historyLoader');
+        const noHistory = document.getElementById('noHistory');
+        // NEW Image Elements
+        const imageDropzone = document.getElementById('imageDropzone');
+        const imageInput = document.getElementById('imageInput');
+        const imageInputPlaceholder = document.getElementById('imageInputPlaceholder');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const imageMimeTypeSpan = document.getElementById('imageMimeType');
+        const clearImageButton = document.getElementById('clearImageButton');
+
+
+        // --- TEMPLATE DATA ---
+        const TEMPLATES = {
+            'lunch': {
+                dilemma: "I need to pick a quick, satisfying lunch. I'm feeling slightly cold and want comfort food.",
+                options: "Sandwich\nSalad\nSoup\nLeftover Pizza"
+            },
+            'movie': {
+                dilemma: "What should my partner and I watch tonight? We want something engaging and not too long.",
+                options: "Action Flick\nRomantic Comedy\nSci-Fi Documentary\nAnimated Classic"
+            },
+            'activity': {
+                dilemma: "It's Saturday and the weather is unexpectedly rainy. What should I do inside?",
+                options: "Go for a walk in the rain\nVisit a museum\nStay home and read\nBake a cake"
+            },
+            'game': {
+                dilemma: "We have two hours to play a board game with 4 people. What should we choose?",
+                options: "Catan\nDominion\nTicket to Ride\nCode Names"
+            },
+             'drink': {
+                dilemma: "I need a morning boost, but I'm trying to limit my sugar intake. Which drink is best?",
+                options: "Black Coffee\nMatcha Latte\nHerbal Tea\nEnergy Drink"
+            }
+        };
+
+
+        const SHUFFLE_DURATION_MS = 1800;
+        const SHUFFLE_INTERVAL_MS = 90;
+        let shuffleInterval = null;
+
+        const SHUFFLE_EMOJIS = ['', '', '', '', '', '', '', ''];
+        const RESULT_EMOJIS = ['', '', '', '', '', '', '', ''];
+        
+        // Canned reasons for Quick Pick mode
+        const QUICK_REASONS = [
+            "The universe just felt like it. Who am I to argue with the universe?",
+            "My highly sophisticated, incredibly complex algorithm (a.k.a. a random number) chose wisely.",
+            "A tiny gnome whispered this option into my digital ear. Gnomes are trustworthy.",
+            "It had the best vibes, according to my patented Vibe-O-Meter™.",
+            "The pixels aligned perfectly for this particular choice. Science!",
+            "I flipped a digital coin, and it landed squarely on this option.",
+        ];
+
+        // Dynamic Tailwind color classes for the result
+        const RESULT_COLORS = [
+            'bg-accent-green/10 text-accent-green',
+            'bg-accent-blue/10 text-accent-blue',
+            'bg-accent-purple/10 text-accent-purple',
+            'bg-primary/10 text-primary',
+            'bg-secondary/10 text-secondary',
+        ];
+
+        // --- FIREBASE HISTORY FUNCTIONS ---
+
+        /**
+         * Saves a new decision record to Firestore.
+         */
+        async function saveDecision(dilemma, options, choice, justification, type) {
+            if (!isFirebaseReady) {
+                console.warn("Firebase not ready. Decision not saved.");
+                return;
+            }
+
+            try {
+                const docRef = await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/decisions`), {
+                    dilemma: dilemma,
+                    options: options,
+                    choice: choice,
+                    justification: justification,
+                    type: type,
+                    timestamp: Date.now()
+                });
+                console.log("Decision written with ID: ", docRef.id);
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                showStatus("Warning: Failed to save decision to history.", true);
+            }
+        }
+
+        /**
+         * Sets up a real-time listener for the user's last 5 decisions.
+         */
+        function setupHistoryListener() {
+            if (!isFirebaseReady || !db) {
+                // Don't set up the listener if Firebase isn't initialized yet
+                return;
+            }
+
+            historyLoader.classList.remove('hidden');
+
+            const q = query(
+                collection(db, `/artifacts/${appId}/users/${userId}/decisions`),
+                orderBy("timestamp", "desc"),
+                limit(5)
+            );
+
+            onSnapshot(q, (snapshot) => {
+                historyList.innerHTML = ''; // Clear existing list
+                historyLoader.classList.add('hidden');
+                
+                if (snapshot.empty) {
+                    noHistory.classList.remove('hidden');
+                    return;
+                }
+                
+                noHistory.classList.add('hidden');
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const date = new Date(data.timestamp).toLocaleString();
+                    
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-4 rounded-xl shadow-lg border border-gray-100 transition duration-300 hover:shadow-xl";
+                    
+                    let typeBadgeClass = data.type === 'Intelligent' 
+                        ? 'bg-accent-green/20 text-accent-green' 
+                        : 'bg-primary/20 text-primary';
+                        
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-lg text-gray-800 break-words">${data.dilemma || 'Untitled Decision'}</h3>
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${typeBadgeClass}">${data.type}</span>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-2">Chose: <span class="font-medium text-gray-900">${data.choice}</span></p>
+                        <p class="text-xs text-gray-400 mb-3">${date}</p>
+                        <details class="text-sm">
+                            <summary class="font-medium text-gray-700 cursor-pointer hover:text-secondary">View Justification</summary>
+                            <p class="mt-2 p-2 bg-gray-50 rounded-lg text-gray-600 border border-gray-200">${data.justification}</p>
+                        </details>
+                    `;
+                    historyList.appendChild(card);
+                });
+            }, (error) => {
+                console.error("Error listening to history: ", error);
+                historyLoader.classList.add('hidden');
+                noHistory.textContent = "Error loading history.";
+                noHistory.classList.remove('hidden');
+            });
+        }
+        // --- END FIREBASE HISTORY FUNCTIONS ---
+
+        // --- GEMINI API HELPERS ---
+        const GEMINI_MODEL = 'gemini-2.5-flash-preview-09-2025';
+        
+        // *********************************************************************************
+        // CRITICAL VERCEL FIX: 
+        // Before deploying to Vercel, you must replace the empty string below with your 
+        // actual Gemini API Key (e.g., const API_KEY = "AIzaSy...your-key...XYZ";). 
+        // If this value is empty, the Intelligent Pick feature will fail on Vercel.
+        const API_KEY = ""; // Setting to empty string to ensure Canvas environment can inject its key
+        // *********************************************************************************
+
+
+        /**
+         * Generic fetch function with exponential backoff for retries.
+         */
+        async function exponentialBackoffFetch(url, options, maxRetries = 5, delay = 1000) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    if (response.status === 429) {
+                        throw new Error("Rate limit exceeded. Retrying...");
+                    }
+                    // For non-rate-limit errors (e.g., 400, 500), throw to prevent retry
+                    throw new Error(`API error: ${response.statusText}`);
+                } catch (error) {
+                    if (i === maxRetries - 1 || error.message.startsWith("API error")) {
+                        throw error;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay * (2 ** i) + Math.random() * 100));
+                }
+            }
+        }
+        
+        /**
+         * Calls the Gemini API to get a justified recommendation, optionally using an image.
+         */
+        async function callGeminiApi(optionsList, chosenOption, dilemma, imageBase64, mimeType) {
+            
+            // The Canvas environment automatically handles API keys if the hardcoded value is empty.
+            // We only throw an error if the user is attempting a Vercel deployment without key.
+            if (API_KEY === "AIzaSy...YOUR-KEY-HERE...XYZ" && typeof __initial_auth_token === 'undefined') {
+                throw new Error("API Key is missing. Please insert your key before deploying to Vercel.");
+            }
+            
+            // Use the API_KEY if available (for Vercel), otherwise, let the environment inject it.
+            const finalApiKey = API_KEY; // Now uses the empty string from line 378
+            
+            // Check if finalApiKey is empty, and if so, rely on the environment (which is what we want here)
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${finalApiKey}`;
+
+
+            const systemPrompt = `You are a fun, decisive, and highly informed virtual assistant. Your task is to write a concise, compelling, and creative justification for why the chosen option is the best decision, considering the other options provided. Use a witty, encouraging, and informal tone. The justification must be a single paragraph. Base your answer on grounded search results when possible. If an image is provided, use the visual information to strengthen the justification, especially if it's a shopping dilemma.`;
+            
+            let userQuery = `The user is trying to decide between these options: ${optionsList}. The randomly chosen option is "${chosenOption}". Provide a compelling justification for choosing "${chosenOption}".`;
+            
+            // Modify userQuery if a dilemma is provided
+            if (dilemma) {
+                userQuery = `The user's dilemma is: "${dilemma}". They are deciding between these options: ${optionsList}. The randomly chosen option is "${chosenOption}". Provide a compelling justification for choosing "${chosenOption}" that directly addresses the context of the dilemma.`;
+            }
+
+            // NEW: Construct the contents array based on image presence
+            let contents = [];
+            if (imageBase64 && mimeType) {
+                // If image is present, add it as inlineData along with the query text
+                contents = [{ 
+                    role: "user", 
+                    parts: [
+                        { text: userQuery },
+                        { inlineData: { mimeType: mimeType, data: imageBase64 } }
+                    ]
+                }];
+            } else {
+                // Standard text-only query
+                contents = [{ parts: [{ text: userQuery }] }];
+            }
+
+            const payload = {
+                contents: contents, // Use the dynamically constructed contents array
+                tools: [{ "google_search": {} }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                config: {
+                    temperature: 0.8
+                }
+            };
+
+            const response = await exponentialBackoffFetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const candidate = response.candidates?.[0];
+
+            if (candidate && candidate.content?.parts?.[0]?.text) {
+                const text = candidate.content.parts[0].text;
+                let sources = [];
+                const groundingMetadata = candidate.groundingMetadata;
+                
+                if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                    sources = groundingMetadata.groundingAttributions
+                        .map(attribution => ({
+                            uri: attribution.web?.uri,
+                            title: attribution.web?.title,
+                        }))
+                        .filter(source => source.uri && source.title);
+                }
+                
+                return { text, sources };
+            } else {
+                // Check if the response failed due to API Key
+                if (response.error?.message?.includes("API key not valid")) {
+                    throw new Error("Gemini API key is invalid or missing the required header.");
+                }
+                throw new Error("Gemini API response was missing content or was malformed.");
+            }
+        }
+        // --- END GEMINI API HELPERS ---
+
+
+        /**
+         * Removes all possible color and background classes defined in RESULT_COLORS
+         * from the target element to prepare for a new pick.
+         */
+        function removeAllColorClasses(element) {
+            const classesToRemove = RESULT_COLORS.map(c => c.split(' ')).flat();
+            element.classList.remove(...classesToRemove);
+        }
+
+        /**
+         * Displays a status or error message in the dedicated box.
+         */
+        function showStatus(message, isError = true) {
+            statusMessage.textContent = message;
+            statusMessage.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+            
+            if (isError) {
+                statusMessage.classList.add('bg-red-100', 'text-red-700');
+                statusMessage.classList.remove('bg-green-100', 'text-green-700');
+            } else {
+                statusMessage.classList.add('bg-green-100', 'text-green-700');
+                statusMessage.classList.remove('bg-red-100', 'text-red-700');
+            }
+        }
+
+        /**
+         * Clears all status and result displays.
+         */
+        function clearDisplay() {
+            resultOutput.textContent = '';
+            reasonOutput.textContent = '';
+            reasonOutput.classList.remove('animate-reason', 'opacity-100');
+            reasonOutput.classList.add('opacity-0');
+            reasonLoader.classList.add('hidden');
+            citationsOutput.classList.add('hidden');
+            citationList.innerHTML = '';
+            resultContainer.classList.add('hidden');
+            statusMessage.classList.add('hidden');
+            // Hide reset button when starting a new operation
+            resetArea.classList.add('hidden');
+        }
+        
+        // --- NEW IMAGE HANDLERS ---
+        
+        /**
+         * Clears the image preview and stored Base64 data.
+         */
+        function clearImage() {
+            uploadedImageBase64 = null;
+            uploadedImageMimeType = null;
+            imagePreview.src = '';
+            imageMimeTypeSpan.textContent = '';
+            imagePreviewContainer.classList.add('hidden');
+            imageInputPlaceholder.classList.remove('hidden');
+            imageDropzone.style.borderColor = ''; // Reset border
+            imageDropzone.classList.remove('drag-over');
+            console.log("Image cleared.");
+            showStatus('Ready to input a new dilemma.', false); // Clear status
+        }
+        
+        /**
+         * Handles a File object (from upload, drop, or paste) and converts it to Base64.
+         */
+        function handleImageFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showStatus("Please drop or paste a valid image file.", true);
+                return;
+            }
+            
+            showStatus('Processing image...', false);
+            clearImage(); // Clear any existing image (and status)
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                // The Base64 data is everything after the comma
+                uploadedImageBase64 = event.target.result.split(',')[1];
+                uploadedImageMimeType = file.type;
+                
+                // Update preview
+                imagePreview.src = event.target.result;
+                imageMimeTypeSpan.textContent = uploadedImageMimeType;
+                imagePreviewContainer.classList.remove('hidden');
+                imageInputPlaceholder.classList.add('hidden');
+                imageDropzone.classList.remove('drag-over');
+                showStatus('Image ready for Intelligent Pick! ', false);
+            };
+            
+            reader.onerror = (e) => {
+                showStatus("Failed to read image file.", true);
+                console.error("FileReader error:", e);
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        /**
+         * Sets up event listeners for drag and drop, file input, and paste.
+         */
+        function setupImageHandlers() {
+            // 1. Click to upload (hidden input)
+            imageDropzone.addEventListener('click', () => imageInput.click());
+            imageInput.addEventListener('change', (e) => {
+                if (e.target.files.length) {
+                    handleImageFile(e.target.files[0]);
+                }
+            });
+
+            // 2. Drag & Drop events
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                imageDropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+            
+            imageDropzone.addEventListener('dragenter', () => imageDropzone.classList.add('drag-over'), false);
+            imageDropzone.addEventListener('dragleave', () => imageDropzone.classList.remove('drag-over'), false);
+            imageDropzone.addEventListener('drop', (e) => {
+                imageDropzone.classList.remove('drag-over');
+                if (e.dataTransfer.files.length) {
+                    handleImageFile(e.dataTransfer.files[0]);
+                }
+            }, false);
+
+            // 3. Paste event (listening on the document body for better capture)
+            document.body.addEventListener('paste', (e) => {
+                // Only process paste if focus is not on a text input/textarea
+                const focusedElement = document.activeElement;
+                if (focusedElement && (focusedElement.tagName === 'INPUT' || focusedElement.tagName === 'TEXTAREA')) {
+                    return;
+                }
+                
+                for (let i = 0; i < e.clipboardData.items.length; i++) {
+                    const item = e.clipboardData.items[i];
+                    if (item.type.indexOf('image') !== -1) {
+                        e.preventDefault(); // Stop default text paste
+                        handleImageFile(item.getAsFile());
+                        return;
+                    }
+                }
+            }, false);
+            
+            // 4. Clear button
+            clearImageButton.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent click from propagating to dropzone
+                clearImage();
+            });
+        }
+        // --- END IMAGE HANDLERS ---
+        
+        /**
+         * Resets the entire application state for new input.
+         */
+        function resetApp() {
+            clearDisplay();
+            clearImage(); // NEW: Clear image data
+            templateSelect.value = ''; // Clear template selection
+            dilemmaInput.value = ''; // Clear dilemma input
+            optionsInput.value = ''; // Clear options input
+            quickPickButton.disabled = false;
+            intelligentPickButton.disabled = false;
+            quickPickButton.textContent = 'Quick Pick (Random)';
+            intelligentPickButton.textContent = 'Intelligent Pick ';
+        }
+        
+        /**
+         * Function to handle template selection and populate fields.
+         */
+        function loadTemplate() {
+            const selectedTemplateKey = templateSelect.value;
+            if (selectedTemplateKey && TEMPLATES[selectedTemplateKey]) {
+                const template = TEMPLATES[selectedTemplateKey];
+                dilemmaInput.value = template.dilemma;
+                optionsInput.value = template.options;
+            } else if (!selectedTemplateKey) {
+                // Clear fields if "-- Select a common dilemma --" is chosen
+                dilemmaInput.value = '';
+                optionsInput.value = '';
+            }
+            // Ensure display is cleared when loading new options
+            clearDisplay();
+            clearImage(); // Clear image on template change
+        }
+
+        /**
+         * Generic function to start the visual shuffle animation.
+         */
+        function startShuffle(options) {
+            resultMessage.textContent = 'Shuffling options...';
+            resultOutput.classList.remove('animate-result');
+            removeAllColorClasses(resultOutput);
+            resultOutput.classList.add('animate-shuffle');
+
+            shuffleInterval = setInterval(() => {
+                const randomOptionIndex = Math.floor(Math.random() * options.length);
+                const randomEmojiIndex = Math.floor(Math.random() * SHUFFLE_EMOJIS.length);
+                resultOutput.textContent = `${SHUFFLE_EMOJIS[randomEmojiIndex]} ${options[randomOptionIndex]} ${SHUFFLE_EMOJIS[randomOptionIndex]}`;
+            }, SHUFFLE_INTERVAL_MS);
+        }
+
+        /**
+         * Generic function to stop the shuffle and display the final choice.
+         */
+        function displayFinalChoice(finalChoice) {
+            if (shuffleInterval) {
+                clearInterval(shuffleInterval);
+                shuffleInterval = null;
+            }
+            
+            // Final result display
+            resultOutput.classList.remove('animate-shuffle');
+            
+            const randomColorClass = RESULT_COLORS[Math.floor(Math.random() * RESULT_COLORS.length)];
+            const finalEmoji = RESULT_EMOJIS[Math.floor(Math.random() * RESULT_EMOJIS.length)];
+            
+            const colorClasses = randomColorClass.split(' ');
+            resultOutput.classList.add('animate-result', ...colorClasses);
+            
+            resultOutput.textContent = `${finalEmoji} ${finalChoice} ${finalEmoji}`;
+            resultMessage.textContent = 'The Picker picked this for you:';
+            
+            // Show the reset button after a result is finalized
+            resetArea.classList.remove('hidden'); 
+        }
+
+        // --- MODE 1: QUICK PICK (RANDOM) ---
+        function startQuickPicking() {
+            clearDisplay();
+
+            const dilemma = dilemmaInput.value.trim();
+            const input = optionsInput.value;
+            const options = input
+                .split('\n')
+                .map(o => o.trim())
+                .filter(o => o.length > 0);
+
+            if (options.length < 2) {
+                showStatus('Please enter at least two valid options, each on a new line.');
+                return;
+            }
+
+            quickPickButton.disabled = true;
+            intelligentPickButton.disabled = true;
+            quickPickButton.textContent = 'Deciding...';
+            resultContainer.classList.remove('hidden');
+            
+            const finalIndex = Math.floor(Math.random() * options.length);
+            const finalChoice = options[finalIndex];
+            const randomReason = QUICK_REASONS[Math.floor(Math.random() * QUICK_REASONS.length)];
+
+            startShuffle(options);
+
+            setTimeout(() => {
+                displayFinalChoice(finalChoice);
+                
+                // Display canned reason with animation
+                reasonOutput.textContent = randomReason;
+                reasonOutput.classList.remove('opacity-0');
+                reasonOutput.classList.add('animate-reason', 'opacity-100');
+
+                // Save the decision to Firestore
+                saveDecision(dilemma, input, finalChoice, randomReason, 'Quick');
+                
+                // Re-enable buttons
+                quickPickButton.disabled = false;
+                intelligentPickButton.disabled = false;
+                quickPickButton.textContent = 'Quick Pick (Random)';
+                
+            }, SHUFFLE_DURATION_MS);
+
+        }
+
+
+        // --- MODE 2: INTELLIGENT PICK (GEMINI) ---
+        async function startIntelligentPicking() {
+            clearDisplay();
+
+            const dilemma = dilemmaInput.value.trim(); // Retrieve the dilemma here
+            const input = optionsInput.value;
+            const options = input
+                .split('\n')
+                .map(o => o.trim())
+                .filter(o => o.length > 0);
+
+            if (options.length < 2) {
+                showStatus('Please enter at least two valid options, each on a new line.');
+                return;
+            }
+            
+            if (uploadedImageBase64 && !dilemma) {
+                showStatus('You provided an image! Please also provide a dilemma (e.g., "Which shirt is better?" or "Does this outfit work?") so the AI knows what to analyze.', true);
+                return;
+            }
+
+            // Disable buttons and set initial state
+            quickPickButton.disabled = true;
+            intelligentPickButton.disabled = true;
+            intelligentPickButton.textContent = 'Deciding...';
+            resultContainer.classList.remove('hidden');
+            
+            // 1. Randomly select the final choice
+            const finalIndex = Math.floor(Math.random() * options.length);
+            const finalChoice = options[finalIndex];
+
+            // 2. Start visual shuffle
+            startShuffle(options);
+
+            // 3. Wait for shuffle to finish
+            await new Promise(resolve => setTimeout(resolve, SHUFFLE_DURATION_MS));
+            
+            // 4. Display final choice
+            displayFinalChoice(finalChoice);
+            
+            // 5. Start LLM loading state
+            intelligentPickButton.textContent = 'Analyzing...';
+            reasonLoader.classList.remove('hidden');
+            
+            const optionsList = options.join(', ');
+            let justification = "The intelligent analysis failed, but the pick is final! (Error: Could not retrieve justification.)";
+
+
+            try {
+                // 6. Call Gemini API for justification, passing the dilemma AND image data
+                const response = await callGeminiApi(
+                    optionsList, 
+                    finalChoice, 
+                    dilemma,
+                    uploadedImageBase64, // Pass Base64 data (will be null if no image uploaded)
+                    uploadedImageMimeType // Pass MIME type
+                );
+                justification = response.text; // Store justification for saving
+                
+                // 7. Display generated justification
+                reasonOutput.textContent = justification;
+                reasonOutput.classList.remove('opacity-0');
+                reasonOutput.classList.add('animate-reason', 'opacity-100');
+
+                // 8. Display citations
+                if (response.sources.length > 0) {
+                    citationList.innerHTML = ''; // Clear previous citations
+                    response.sources.forEach(source => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<a href="${source.uri}" target="_blank" class="hover:text-primary transition duration-150 truncate block">${source.title || source.uri}</a>`;
+                        citationList.appendChild(li);
+                    });
+                    citationsOutput.classList.remove('hidden');
+                } else {
+                    citationsOutput.classList.add('hidden');
+                }
+
+                // Show success status briefly
+                showStatus('Intelligent pick complete!', false);
+
+            } catch (error) {
+                console.error("Gemini call failed:", error);
+                
+                let errorMessage = "Intelligent justification failed.";
+                if (error.message.includes("API Key is missing for Vercel deployment")) {
+                     errorMessage += " (Error: API Key missing for Vercel.)";
+                } else if (error.message.includes("API key not valid")) {
+                    errorMessage += " (Error: Invalid API Key.)";
+                } else if (error.message.includes("API error: Forbidden")) {
+                    errorMessage += " (Error: Forbidden - check API key permissions or origin.)";
+                }
+                 else {
+                    errorMessage += ` (Details: ${error.message})`;
+                }
+
+                justification = `Intelligent justification failed. The random pick is final! Please check your browser console for API error details. ${dilemma ? 'The dilemma was: ' + dilemma : ''}`;
+
+                // Fallback message
+                reasonOutput.textContent = justification;
+                reasonOutput.classList.remove('opacity-0');
+                reasonOutput.classList.add('animate-reason', 'opacity-100');
+                citationsOutput.classList.add('hidden');
+                showStatus(errorMessage, true);
+            } finally {
+                // Save the decision to Firestore regardless of Gemini success
+                saveDecision(dilemma, input, finalChoice, justification, 'Intelligent');
+
+                // 9. Reset UI
+                reasonLoader.classList.add('hidden');
+                quickPickButton.disabled = false;
+                intelligentPickButton.disabled = false;
+                intelligentPickButton.textContent = 'Intelligent Pick ';
+            }
+        }
+
+        // Attach event listeners
+        templateSelect.addEventListener('change', loadTemplate);
+        quickPickButton.addEventListener('click', startQuickPicking);
+        intelligentPickButton.addEventListener('click', startIntelligentPicking);
+        resetButton.addEventListener('click', resetApp);
+        
+        // Setup image input/drag/paste handlers
+        setupImageHandlers();
+
+    </script>
+
+</body>
+</html>
